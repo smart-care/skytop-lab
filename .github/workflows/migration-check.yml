@@ -1,0 +1,64 @@
+name: migration-check
+
+# Greps PR-touched migration files for destructive operations and, if found,
+# fails the required `destructive-migration-acknowledged` check until a
+# maintainer adds the `approved-destructive-migration` label to the PR.
+# Forces a human conversation before destructive schema changes ship.
+
+on:
+  pull_request:
+    paths: ["drizzle/migrations/**"]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: scan
+        run: |
+          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'drizzle/migrations/**' | tr '\n' ' ')
+          echo "Scanning: $changed"
+          flagged=""
+          for f in $changed; do
+            if grep -qiE 'DROP\s+(COLUMN|TABLE)|TRUNCATE\b|ALTER\s+COLUMN[^;]*\sTYPE\b' "$f"; then
+              flagged="$flagged $f"
+            fi
+          done
+          if [ -n "$flagged" ]; then
+            echo "destructive=true" >> $GITHUB_OUTPUT
+            echo "files=$flagged" >> $GITHUB_OUTPUT
+          else
+            echo "destructive=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Require acknowledgement label
+        if: steps.scan.outputs.destructive == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = await github.rest.issues.listLabelsOnIssue({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const ok = labels.data.some(l => l.name === 'approved-destructive-migration');
+            if (!ok) {
+              core.setFailed(
+                "Destructive migration detected in: ${{ steps.scan.outputs.files }}\n" +
+                "A maintainer must add the 'approved-destructive-migration' label to acknowledge."
+              );
+            }
+
+  destructive-migration-acknowledged:
+    # Always-present check name so branch protection can require it without
+    # the path filter on `scan` causing it to be skipped (and thus pending forever).
+    runs-on: ubuntu-latest
+    needs: [scan]
+    if: always()
+    steps:
+      - run: |
+          if [ "${{ needs.scan.result }}" = "failure" ]; then
+            echo "Destructive migration not acknowledged — failing." >&2
+            exit 1
+          fi
+          echo "ok"

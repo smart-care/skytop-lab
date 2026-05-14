@@ -1,0 +1,49 @@
+# Local git hooks for skytop-lab. Installed by `bun install` via the `prepare` script.
+#
+# pre-commit: fast checks on staged files only (< 3s budget).
+# pre-push:   the full gauntlet — same checks CI runs.
+#
+# If a hook is slowing you down, fix the underlying problem; do NOT add --no-verify.
+# Claude will refuse --no-verify and the hooks will refuse to be bypassed.
+
+pre-commit:
+  parallel: true
+  commands:
+    secrets:
+      glob: "*.{ts,tsx,js,jsx,json,yaml,yml,md,env*}"
+      run: gitleaks protect --staged --redact -v
+    lint:
+      glob: "*.{ts,tsx,js,jsx,json}"
+      run: bun biome check {staged_files}
+    env-files:
+      run: |
+        for f in {staged_files}; do
+          case "$f" in
+            .env|.env.local|.env.production|.env.preview|.env.development)
+              echo "Refusing to commit $f (use .env.example for tracked env templates)" >&2
+              exit 1
+              ;;
+          esac
+        done
+
+pre-push:
+  parallel: false
+  commands:
+    block-main:
+      run: |
+        protected_branch=main
+        current_branch=$(git symbolic-ref --short HEAD)
+        if [ "$current_branch" = "$protected_branch" ]; then
+          echo "Direct push to '$protected_branch' is blocked. Open a PR instead." >&2
+          exit 1
+        fi
+    install:
+      run: bun install --frozen-lockfile
+    typecheck:
+      run: bun run typecheck
+    lint:
+      run: bun run lint
+    test:
+      run: bun run test
+    secrets:
+      run: gitleaks detect --no-git --redact -v

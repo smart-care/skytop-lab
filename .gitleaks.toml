@@ -1,0 +1,21 @@
+# Gitleaks config for skytop-lab.
+# We extend the default ruleset and add a small allowlist for our example values.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for known-safe example strings."
+paths = [
+  '''\.env\.example$''',
+  '''README\.md$''',
+  '''CLAUDE\.md$''',
+  '''SETUP_PREREQUISITES\.md$''',
+  '''app/lib/env\.ts$''',
+]
+regexes = [
+  '''change-me-locally-and-rotate-in-prod''',
+  '''noreply@example\.com''',
+  '''noreply@skytop\.example''',
+  '''app_user:PASSWORD@HOST''',
+]

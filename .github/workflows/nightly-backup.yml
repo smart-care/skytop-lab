@@ -1,0 +1,29 @@
+name: nightly-backup
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install pg_dump
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Dump and upload
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_AWS_REGION }}
+          S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+        run: |
+          set -euo pipefail
+          stamp=$(date -u +'%Y-%m-%d-%H%M%S')
+          file="skytop-lab-$stamp.sql.gz"
+          pg_dump --no-owner --no-privileges "$PROD_DATABASE_URL" | gzip -9 > "$file"
+          aws s3 cp "$file" "s3://$S3_BUCKET/skytop-lab/$file" --storage-class STANDARD_IA
+          echo "Uploaded $file"

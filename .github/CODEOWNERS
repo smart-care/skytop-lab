@@ -1,0 +1,3 @@
+# Every PR is auto-assigned to Pax as a reviewer.
+# Branch protection requires at least 1 CODEOWNER approval.
+*       @paxtonbigler
