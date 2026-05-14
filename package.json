@@ -16,7 +16,7 @@
     "test": "vitest --run",
     "test:watch": "vitest",
     "check": "bun run typecheck && bun run lint && bun run test && bun run secrets",
-    "secrets": "gitleaks detect --no-git --redact -v",
+    "secrets": "gitleaks detect --redact -v",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run scripts/migrate.ts",
     "db:studio": "drizzle-kit studio",
