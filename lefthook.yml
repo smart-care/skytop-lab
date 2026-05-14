@@ -46,4 +46,9 @@ pre-push:
     test:
       run: bun run test
     secrets:
-      run: gitleaks detect --no-git --redact -v
+      # Scan git history (the commits we're about to push), NOT the working tree.
+      # `--no-git` would scan the filesystem, including gitignored files like
+      # .env — which contains real local secrets but can never enter git anyway.
+      # The point of this hook is to prevent secrets from entering the remote, so
+      # we scan what's actually leaving the laptop.
+      run: gitleaks detect --redact -v
