@@ -23,6 +23,37 @@ If anything goes wrong, **we can always go back**. The rails won't let you ruin 
 
 ---
 
+## Your historical data
+
+Four years of action data from The Hearing Clinic (THC) spreadsheet has been imported into the tool. As of the initial import:
+
+- **2,312 actions** spanning **2022–2026**, totaling **$80,513.00** in commissions paid
+- Staff represented: **Alex** (1,015), **Cosette** (658), **Krystal** (473), **Heidi** (166). Alex and Heidi are former employees; their historical actions are preserved for the record but they can't log in.
+- Statuses normalized to the new system: **Approved** (2,205), **Pending** (73), **Denied** (34).
+
+### Decisions we made during the import
+
+A few things didn't map cleanly from the old sheet. Here's what we did and why:
+
+1. **Old action types kept as-is.** The sheet had ten action types we no longer pay on (`Onsite Routine`, `Five Star Google Review`, `Onsite Introduction`, etc.). Those rows are in the tool — they show up in the dashboard and tables — but new submissions can only use the five current types (defined in `app/config/incentive-rules.ts`). If you want to merge any of the old names with current ones (e.g., `Lead, Registered, Qualified (Appointment Must Be Completed)` → `Lead, Registered, Qualified`), tell Pax and we'll do it.
+2. **"Maren" in the Status column → Approved.** The old sheet recorded the approver's name (almost always Maren) in the Status column. We mapped those to "Approved" — they were paid, that's what matters.
+3. **Original commission amounts preserved verbatim.** We did NOT recompute commissions under today's rules. If you got paid $50 in 2022 for a `Lead, Registered, Qualified`, that row shows $50 — even if our current rules would calculate it differently for the same inputs.
+4. **171 rows dropped.** 170 had empty `Recorded Date` cells (they were summary/total rows in the source, not real events). 1 row had the date `9/29/0202` (typo); we couldn't tell which year was meant, so we skipped it.
+
+### What's still missing
+
+**EHS (Ebia Hearing & Sound) history is not in the tool yet.** What we received was a pivot summary (monthly rollup), not the per-event action list. To get EHS history in, export the underlying action list from the Google Sheet — the granular "one row per action" view, not the rollup — and send Pax the CSV. We'll add EHS as a second source in `scripts/import.ts` and re-run the import.
+
+### How re-imports work (for Pax)
+
+The import script is at `scripts/import.ts`. Each row's database ID is a deterministic hash of `(source file, row number)`, so:
+
+- Re-running `bun run scripts/import.ts --commit` after no source changes is a no-op (duplicate rows are skipped automatically).
+- To re-import after editing a source CSV: `bun run scripts/import.ts --clear` first to remove the previous imports, then `--commit`.
+- To preview what would be imported without writing to the database: `bun run scripts/import.ts` (dry-run is the default).
+
+---
+
 ## First-time setup (one-time, ~15 minutes)
 
 You'll need a Mac with Terminal open. Copy and paste each command — don't retype.
