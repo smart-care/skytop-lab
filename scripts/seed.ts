@@ -1,10 +1,13 @@
-// Seed the six prototype users by direct insert into the `user` table.
+// Seed the six prototype users for local development.
 // Run with: bun run db:seed
+// Run with: bun run db:seed --reset    (wipes the six seed users first, then recreates)
 //
-// We bypass Better Auth's signUp here because email+password auth is disabled.
-// Magic-link sign-in works against any user row that exists with a matching email.
+// Uses Better Auth's signUpEmail so each user gets a hashed credential record,
+// then patches role/org on the user row. The session / account FK cascades on
+// delete, so --reset cleanly removes the credential too.
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
+import { auth } from "../app/server/auth";
 import { db } from "../app/server/db";
 import { user as userTable } from "../drizzle/schema";
 
@@ -24,24 +27,39 @@ const SEEDS: Seed[] = [
   { email: "cosette@skytop.example", name: "Cosette", role: "staff", org: "THC" },
 ];
 
+const SEED_PASSWORD = process.env.SEED_PASSWORD ?? "skytop-dev-password";
+const RESET = process.argv.includes("--reset");
+
 async function main() {
+  if (SEED_PASSWORD === "skytop-dev-password") {
+    console.log("Using default dev password 'skytop-dev-password'. Override with SEED_PASSWORD.");
+  }
+
+  if (RESET) {
+    const emails = SEEDS.map((s) => s.email);
+    const deleted = await db
+      .delete(userTable)
+      .where(inArray(userTable.email, emails))
+      .returning({ email: userTable.email });
+    console.log(`Reset: deleted ${deleted.length} existing seed user(s).`);
+  }
+
   console.log(`Seeding ${SEEDS.length} users…`);
   for (const seed of SEEDS) {
     const existing = await db.query.user.findFirst({
-      where: eq(userTable.email, seed.email),
+      where: (u, { eq }) => eq(u.email, seed.email),
     });
     if (existing) {
-      console.log(`  ✓ ${seed.email} already exists, skipping`);
+      console.log(`  ✓ ${seed.email} already exists, skipping (use --reset to recreate)`);
       continue;
     }
-    await db.insert(userTable).values({
-      id: crypto.randomUUID(),
-      email: seed.email,
-      name: seed.name,
-      role: seed.role,
-      org: seed.org,
-      emailVerified: true,
+    await auth.api.signUpEmail({
+      body: { email: seed.email, password: SEED_PASSWORD, name: seed.name },
     });
+    await db
+      .update(userTable)
+      .set({ role: seed.role, org: seed.org, emailVerified: true })
+      .where(eq(userTable.email, seed.email));
     console.log(`  + ${seed.email} (${seed.role}${seed.org ? `/${seed.org}` : ""})`);
   }
   console.log("Done.");
