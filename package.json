@@ -40,7 +40,6 @@
     "postgres": "^3.4.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "resend": "^4.0.1",
     "tailwind-merge": "^2.5.5",
     "zod": "^3.24.1"
   },
@@ -54,6 +53,7 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.0",
+    "csv-parse": "^6.2.1",
     "drizzle-kit": "^0.30.0",
     "happy-dom": "^20.0.0",
     "lefthook": "^1.10.0",

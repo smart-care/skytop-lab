@@ -7,10 +7,6 @@ export const env = createEnv({
     MIGRATION_DATABASE_URL: z.string().url().optional(),
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.string().url(),
-    // Optional. If unset, magic-link URLs are logged to the server console
-    // instead of mailed — useful for first-boot before a real mailer is wired up.
-    RESEND_API_KEY: z.string().optional(),
-    MAGIC_LINK_FROM: z.string().default("Skytop Lab <noreply@localhost>"),
     APP_ENV: z.enum(["development", "preview", "production"]),
   },
   runtimeEnv: process.env,
