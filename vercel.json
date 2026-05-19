@@ -4,5 +4,6 @@
     "deploymentEnabled": {
       "main": true
     }
-  }
+  },
+  "rewrites": [{ "source": "/((?!api).*)", "destination": "/index.html" }]
 }
